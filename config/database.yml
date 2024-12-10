@@ -1,0 +1,15 @@
+defaults: &defaults
+  adapter: postgresql
+  pool: 5
+
+development:
+  <<: *defaults
+  database: api_development
+
+test:
+  <<: *defaults
+  database: api_test
+
+production:
+  <<: *defaults
+  database: api_production

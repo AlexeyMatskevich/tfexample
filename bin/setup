@@ -1,0 +1,30 @@
+#!/usr/bin/env truffleruby
+require "fileutils"
+
+# path to your application root.
+APP_ROOT = File.expand_path("..", __dir__)
+
+def system!(*args)
+  system(*args, exception: true)
+end
+
+FileUtils.chdir APP_ROOT do
+  # This script is a way to set up or update your development environment automatically.
+  # This script is idempotent, so that you can run it at any time and get an expectable outcome.
+  # Add necessary setup steps to this file.
+
+  puts "== Installing dependencies =="
+  system! "gem install bundler --conservative"
+  system("bundle check") || system!("bundle install")
+
+  puts "== Build java =="
+  system! "cd pulsar-java-client && gradle all"
+
+  puts "== Setup database =="
+  system "SKIP_PULSAR=true bin/rails db:create"
+  system! "SKIP_PULSAR=true bin/rails db:migrate"
+
+
+  puts "\n== Removing old logs and tempfiles =="
+  system! "SKIP_PULSAR=true bin/rails log:clear tmp:clear"
+end
