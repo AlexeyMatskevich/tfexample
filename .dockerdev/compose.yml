@@ -36,15 +36,12 @@ x-backend: &backend
     IRB_HISTFILE: /usr/local/hist/.irb_history
     EDITOR: vi
     DATABASE_CLEANER_ALLOW_REMOTE_DATABASE_URL: true
+    TRUFFLERUBYOPT: --jvm --experimental-options --cexts-lock=false --cexts-panama
   depends_on: &backend_depends_on
     postgres:
       condition: service_healthy
 
 services:
-  rails:
-    <<: *backend
-    command: bundle exec rails routes
-
   backend:
     <<: *backend
     command: bundle exec rails server -b 0.0.0.0
@@ -77,6 +74,11 @@ services:
     healthcheck:
       test: pg_isready -U postgres -h 127.0.0.1
       interval: 5s
+
+  rails:
+    <<: *backend
+    command: echo "rails"
+
 volumes:
   history:
   postgres-data:

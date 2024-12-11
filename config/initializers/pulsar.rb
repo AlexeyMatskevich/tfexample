@@ -9,11 +9,11 @@ unless ENV['SKIP_PULSAR']
                      .newProducer(Schema['STRING'])
                      .topic("my-topic")
                      .create
-    TestConsumer = Client
-                     .newConsumer(Pulsar::Schema['STRING'])
-                     .topic("my-topic")
-                     .subscriptionName("my-subscription")
-                     .subscriptionType(Java.type('org.apache.pulsar.client.api.SubscriptionType').Exclusive)
-                     .subscribe
+
+    # TestConsumer = Client
+    #                  .newConsumer(Schema['STRING'])
+    #                  .topic("my-topic")
+    #                  .subscriptionName("my-subscription")
+    #                  .subscribe
   end
 end

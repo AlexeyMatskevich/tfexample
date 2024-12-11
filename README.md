@@ -72,7 +72,12 @@ fetch('http://localhost:3001/graphql', {
 ```
 open console `dip rails c` execute code to consume message from pulsar 'my-topic'
 ```ruby
-message = Pulsar::TestConsumer.receive
+consumer = Pulsar::Client
+  .newConsumer(Pulsar::Schema['STRING'])
+  .topic("my-topic")
+  .subscriptionName("my-subscription")
+  .subscribe
+message = consumer.receive
 message.getValue
 # => "Test foobar"
 ```
