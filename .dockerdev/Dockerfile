@@ -1,10 +1,11 @@
-ARG DISTRO_NAME=bookworm
+ARG RUBY_VERSION
+ARG DISTRO_NAME=bullseye
 
-FROM debian:$DISTRO_NAME-slim
+FROM ruby:$RUBY_VERSION-slim-$DISTRO_NAME
 
-ARG DISTRO_NAME=bookworm
-ENV LANG C.UTF-8
+ARG DISTRO_NAME
 
+# Common dependencies
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
   --mount=type=cache,target=/var/lib/apt,sharing=locked \
   --mount=type=tmpfs,target=/var/log \
@@ -13,21 +14,13 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
   apt-get update -qq \
   && DEBIAN_FRONTEND=noninteractive apt-get install -yq --no-install-recommends \
     build-essential \
-    ca-certificates \
-    libffi-dev \
-    libgmp-dev \
-    libssl-dev \
-    libyaml-dev \
     gnupg2 \
     curl \
     less \
-    git \
-    unzip \
-    wget \
-    tar
+    git
 
 # Install PostgreSQL dependencies
-ARG PG_MAJOR=17
+ARG PG_MAJOR
 RUN curl -sSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | \
     gpg --dearmor -o /usr/share/keyrings/postgres-archive-keyring.gpg \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/postgres-archive-keyring.gpg] https://apt.postgresql.org/pub/repos/apt/" \
@@ -38,54 +31,22 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
   apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get -yq dist-upgrade && \
   DEBIAN_FRONTEND=noninteractive apt-get install -yq --no-install-recommends \
     libpq-dev \
-    postgresql-client-$PG_MAJOR && \
-    psql --version
+    postgresql-client-$PG_MAJOR
 
-ARG TRUFFLERUBY_VERSION
-RUN set -eux ;\
-    wget -q https://github.com/oracle/truffleruby/releases/download/graal-$TRUFFLERUBY_VERSION/truffleruby-jvm-$TRUFFLERUBY_VERSION-linux-amd64.tar.gz ;    tar -xzf truffleruby-jvm-$TRUFFLERUBY_VERSION-linux-amd64.tar.gz -C /usr/local --strip-components=1 ;\
-    rm truffleruby-jvm-$TRUFFLERUBY_VERSION-linux-amd64.tar.gz ;\
-    /usr/local/lib/truffle/post_install_hook.sh ;\
-    truffleruby-polyglot-get java ;\
-    ruby --version ;\
-    gem --version ;\
-    bundle --version
+# Configure bundler
+ENV LANG=C.UTF-8 \
+  BUNDLE_JOBS=4 \
+  BUNDLE_RETRY=3
 
-ENV PATH="/usr/local/jvm/bin:${PATH}"
-ENV JAVA_HOME="/usr/local/jvm"
+# Store Bundler settings in the project's root
+ENV BUNDLE_APP_CONFIG=.bundle
 
-ENV GRADLE_HOME /opt/gradle
-ENV GRADLE_VERSION 8.7
-ARG GRADLE_DOWNLOAD_SHA256=544c35d6bd849ae8a5ed0bcea39ba677dc40f49df7d1835561582da2009b961d
-RUN set -o errexit -o nounset \
-    && echo "Downloading Gradle" \
-    && wget --no-verbose --output-document=gradle.zip "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" \
-    \
-    && echo "Checking download hash" \
-    && echo "${GRADLE_DOWNLOAD_SHA256} *gradle.zip" | sha256sum --check - \
-    \
-    && echo "Installing Gradle" \
-    && unzip gradle.zip \
-    && rm gradle.zip \
-    && mv "gradle-${GRADLE_VERSION}" "${GRADLE_HOME}/" \
-    && ln --symbolic "${GRADLE_HOME}/bin/gradle" /usr/bin/gradle \
-    \
-    && echo "Testing Gradle installation" \
-    && gradle --version
-
-# don't create ".bundle" in all our apps
-ENV GEM_HOME /usr/local/bundle
-ENV BUNDLE_SILENCE_ROOT_WARNING=1 \
-    BUNDLE_APP_CONFIG="$GEM_HOME"
-ENV PATH $GEM_HOME/bin:$PATH
-
-# adjust permissions of a few directories for running "gem install" as an arbitrary user
-RUN mkdir -p "$GEM_HOME" && chmod 777 "$GEM_HOME"
+# Uncomment this line if you want to run binstubs without prefixing with `bin/` or `bundle exec`
+# ENV PATH /app/bin:$PATH
 
 # Upgrade RubyGems and install the latest Bundler version
-#RUN gem update --system && \
-#    gem install bundler && \
-#    gem pristine --all
+RUN gem update --system && \
+    gem install bundler
 
 # Create a directory for the app code
 RUN mkdir -p /app
@@ -93,6 +54,5 @@ WORKDIR /app
 
 # Document that we're going to expose port 3000
 EXPOSE 3000
-
 # Use Bash as the default command
-CMD ["/usr/bin/bash"]
+CMD ["/bin/bash"]
